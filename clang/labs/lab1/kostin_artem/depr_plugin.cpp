@@ -6,14 +6,16 @@
 using namespace clang;
 
 class CustomNodeVisitor : public RecursiveASTVisitor<CustomNodeVisitor> {
+  ASTContext *Context;
+
 public:
+  CustomNodeVisitor(ASTContext *_Context) { Context = _Context; }
   bool VisitFunctionDecl(FunctionDecl *pfunction) {
     std::string nameOfFunction = pfunction->getNameInfo().getAsString();
     std::transform(nameOfFunction.begin(), nameOfFunction.end(),
                    nameOfFunction.begin(), ::tolower);
     if (nameOfFunction.find("deprecated") != std::string::npos) {
-      DiagnosticsEngine &diagnostics =
-          pfunction->getASTContext().getDiagnostics();
+      DiagnosticsEngine &diagnostics = Context->getDiagnostics();
       unsigned int diagnostics_id = diagnostics.getCustomDiagID(
           DiagnosticsEngine::Warning,
           "The function name contains \"deprecated\"");
@@ -26,18 +28,21 @@ public:
 };
 
 class CustomConsumer : public ASTConsumer {
+  CompilerInstance &Instance;
+
 public:
+  explicit CustomConsumer(CompilerInstance &_Instance) : Instance(_Instance) {}
   void HandleTranslationUnit(ASTContext &Context) override {
-    CustomNodeVisitor cnv;
+    CustomNodeVisitor cnv(&Instance.getASTContext());
     cnv.TraverseDecl(Context.getTranslationUnitDecl());
   }
 };
 
 class PluginDeprFunc : public PluginASTAction {
   std::unique_ptr<ASTConsumer>
-  CreateASTConsumer(CompilerInstance &Compiler,
+  CreateASTConsumer(CompilerInstance &Instance,
                     llvm::StringRef InFile) override {
-    return std::make_unique<CustomConsumer>();
+    return std::make_unique<CustomConsumer>(Instance);
   }
   bool ParseArgs(const CompilerInstance &Compiler,
                  const std::vector<std::string> &args) override {
