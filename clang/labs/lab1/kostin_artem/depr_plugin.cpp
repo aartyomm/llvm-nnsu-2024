@@ -10,7 +10,7 @@ class CustomNodeVisitor : public RecursiveASTVisitor<CustomNodeVisitor> {
 
 public:
   CustomNodeVisitor(bool CaseInsensitive) : CaseInsensitive(CaseInsensitive) {}
-  bool VisitFunctionDecl(FunctionDecl *Pfunction) {
+  bool VisitFunctionDecl(FunctionDecl *Pfunction) { // NOLINT
     std::string NameOfFunction = Pfunction->getNameInfo().getAsString();
     if (CaseInsensitive) {
       std::transform(NameOfFunction.begin(), NameOfFunction.end(),
@@ -49,8 +49,8 @@ class PluginDeprFunc : public PluginASTAction {
     return std::make_unique<CustomConsumer>(CaseInsensitive);
   }
   bool ParseArgs(const CompilerInstance &Compiler,
-                 const std::vector<std::string> &args) override {
-    for (const auto &arg : args) {
+                 const std::vector<std::string> &Args) override {
+    for (const auto &arg : Args) {
       if (arg == "-i") {
         CaseInsensitive = true;
       }
