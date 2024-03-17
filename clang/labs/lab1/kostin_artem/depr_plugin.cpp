@@ -6,16 +6,18 @@
 using namespace clang;
 
 class CustomNodeVisitor : public RecursiveASTVisitor<CustomNodeVisitor> {
-  ASTContext *Context;
+  bool caseInsensitive;
 
 public:
-  CustomNodeVisitor(ASTContext *_Context) { Context = _Context; }
+  CustomNodeVisitor(bool _caseInsensitive) : caseInsensitive(_caseInsensitive) {}
   bool VisitFunctionDecl(FunctionDecl *pfunction) {
     std::string nameOfFunction = pfunction->getNameInfo().getAsString();
-    std::transform(nameOfFunction.begin(), nameOfFunction.end(),
-                   nameOfFunction.begin(), ::tolower);
+    if (caseInsensitive) {
+      std::transform(nameOfFunction.begin(), nameOfFunction.end(),
+                     nameOfFunction.begin(), ::tolower);
+    }
     if (nameOfFunction.find("deprecated") != std::string::npos) {
-      DiagnosticsEngine &diagnostics = Context->getDiagnostics();
+      DiagnosticsEngine &diagnostics = pfunction->getASTContext().getDiagnostics();
       unsigned int diagnostics_id = diagnostics.getCustomDiagID(
           DiagnosticsEngine::Warning,
           "The function name contains \"deprecated\"");
@@ -28,24 +30,30 @@ public:
 };
 
 class CustomConsumer : public ASTConsumer {
-  CompilerInstance &Instance;
+  bool caseInsensitive;
 
 public:
-  explicit CustomConsumer(CompilerInstance &_Instance) : Instance(_Instance) {}
+  explicit CustomConsumer(bool _caseInsensitive) : caseInsensitive(_caseInsensitive) {}
   void HandleTranslationUnit(ASTContext &Context) override {
-    CustomNodeVisitor cnv(&Instance.getASTContext());
+    CustomNodeVisitor cnv(caseInsensitive);
     cnv.TraverseDecl(Context.getTranslationUnitDecl());
   }
 };
 
 class PluginDeprFunc : public PluginASTAction {
+  bool caseInsensitive = false;
   std::unique_ptr<ASTConsumer>
   CreateASTConsumer(CompilerInstance &Instance,
                     llvm::StringRef InFile) override {
-    return std::make_unique<CustomConsumer>(Instance);
+    return std::make_unique<CustomConsumer>(caseInsensitive);
   }
   bool ParseArgs(const CompilerInstance &Compiler,
                  const std::vector<std::string> &args) override {
+    for (const auto &arg : args) {
+      if (arg == "-i") {
+        caseInsensitive = true;
+      }
+    }
     return true;
   }
 };
