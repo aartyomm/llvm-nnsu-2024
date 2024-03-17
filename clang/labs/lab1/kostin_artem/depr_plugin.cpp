@@ -6,52 +6,53 @@
 using namespace clang;
 
 class CustomNodeVisitor : public RecursiveASTVisitor<CustomNodeVisitor> {
-  bool caseInsensitive;
+  bool CaseInsensitive;
 
 public:
-  CustomNodeVisitor(bool _caseInsensitive) : caseInsensitive(_caseInsensitive) {}
-  bool VisitFunctionDecl(FunctionDecl *pfunction) {
-    std::string nameOfFunction = pfunction->getNameInfo().getAsString();
-    if (caseInsensitive) {
-      std::transform(nameOfFunction.begin(), nameOfFunction.end(),
-                     nameOfFunction.begin(), ::tolower);
+  CustomNodeVisitor(bool CaseInsensitive) : CaseInsensitive(CaseInsensitive) {}
+  bool VisitFunctionDecl(FunctionDecl *Pfunction) {
+    std::string NameOfFunction = Pfunction->getNameInfo().getAsString();
+    if (CaseInsensitive) {
+      std::transform(NameOfFunction.begin(), NameOfFunction.end(),
+                     NameOfFunction.begin(), ::tolower);
     }
-    if (nameOfFunction.find("deprecated") != std::string::npos) {
-      DiagnosticsEngine &diagnostics = pfunction->getASTContext().getDiagnostics();
-      unsigned int diagnostics_id = diagnostics.getCustomDiagID(
+    if (NameOfFunction.find("deprecated") != std::string::npos) {
+      DiagnosticsEngine &Diagnostics =
+          Pfunction->getASTContext().getDiagnostics();
+      unsigned int DiagnosticsId = Diagnostics.getCustomDiagID(
           DiagnosticsEngine::Warning,
           "The function name contains \"deprecated\"");
-      SourceLocation position_of_function = pfunction->getLocation();
-      diagnostics.Report(position_of_function, diagnostics_id)
-          << nameOfFunction;
+      SourceLocation PositionOfFunction = Pfunction->getLocation();
+      Diagnostics.Report(PositionOfFunction, DiagnosticsId) << NameOfFunction;
     }
     return true;
   }
 };
 
 class CustomConsumer : public ASTConsumer {
-  bool caseInsensitive;
+  bool CaseInsensitive;
 
 public:
-  explicit CustomConsumer(bool _caseInsensitive) : caseInsensitive(_caseInsensitive) {}
+  explicit CustomConsumer(bool CaseInsensitive)
+      : CaseInsensitive(CaseInsensitive) {}
   void HandleTranslationUnit(ASTContext &Context) override {
-    CustomNodeVisitor cnv(caseInsensitive);
-    cnv.TraverseDecl(Context.getTranslationUnitDecl());
+    CustomNodeVisitor Cnv(CaseInsensitive);
+    Cnv.TraverseDecl(Context.getTranslationUnitDecl());
   }
 };
 
 class PluginDeprFunc : public PluginASTAction {
-  bool caseInsensitive = false;
+  bool CaseInsensitive = false;
   std::unique_ptr<ASTConsumer>
   CreateASTConsumer(CompilerInstance &Instance,
                     llvm::StringRef InFile) override {
-    return std::make_unique<CustomConsumer>(caseInsensitive);
+    return std::make_unique<CustomConsumer>(CaseInsensitive);
   }
   bool ParseArgs(const CompilerInstance &Compiler,
                  const std::vector<std::string> &args) override {
     for (const auto &arg : args) {
       if (arg == "-i") {
-        caseInsensitive = true;
+        CaseInsensitive = true;
       }
     }
     return true;
