@@ -294,10 +294,10 @@ define dso_local void @FunctionWithLoop_() {
 entry:
   %i = alloca i32, align 4
   store i32 0, ptr %i, align 4
-; CHECK: call void @loop_start()
-; CHECK-NEXT: br label %while.cond
   call void @loop_start()
   br label %while.cond
+; CHECK: call void @loop_start()
+; CHECK-NEXT: br label %while.cond
 
 while.cond:
   %0 = load i32, ptr %i, align 4
