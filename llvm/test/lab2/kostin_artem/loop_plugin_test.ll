@@ -22,11 +22,20 @@
 ;         k++;
 ;     }
 ; }
+;
 ; void SomeFunction_123() {
 ;     int k = 0;
 ;     do {
 ;         k++;
 ;     } while (k < 10);
+; }
+;
+; void SomeFunctionWithSwitch() {
+;     int k = 0;
+;     switch (k){
+;         case(1): break;
+;         default: break;
+;     }
 ; }
 ;
 ; void LoopWithRet() {
@@ -39,13 +48,19 @@
 ;     }
 ; }
 ;
-; void SomeFunctionWithSwitch() {
-;     int k = 0;
-;     switch (k){
-;         case(1): break;
-;         default: break;
+; int LoopWith2Exit(int &a) {
+;     int i = 0;
+;     while(i < 100){
+;         i++;
+;         if (i > 10) {
+;             return 1;
+;         }
+;         a = a + i;
 ;     }
+;     a *= i - 1;
+;     return 2;
 ; }
+
 
 define dso_local void @_Z3fooii(i32 noundef %n, i32 noundef %m) {
 entry:
@@ -210,29 +225,55 @@ if.end:
   br label %while.body
 }
 
-define dso_local void @LoopWithloop_()() {
+define dso_local noundef i32 @LoopWith2Exit(int&)(ptr noundef nonnull align 4 dereferenceable(4) %a) {
 entry:
+  %retval = alloca i32, align 4
+  %a.addr = alloca ptr, align 8
   %i = alloca i32, align 4
+  store ptr %a, ptr %a.addr, align 8
   store i32 0, ptr %i, align 4
 ; CHECK: call void @loop_start()
   br label %while.cond
 
 while.cond:
   %0 = load i32, ptr %i, align 4
-  %cmp = icmp slt i32 %0, 10
+  %cmp = icmp slt i32 %0, 100
   br i1 %cmp, label %while.body, label %while.end
 
 while.body:
   %1 = load i32, ptr %i, align 4
   %inc = add nsw i32 %1, 1
   store i32 %inc, ptr %i, align 4
+  %2 = load i32, ptr %i, align 4
+  %cmp1 = icmp sgt i32 %2, 10
+  br i1 %cmp1, label %if.then, label %if.end
+
+if.then:
+  store i32 1, ptr %retval, align 4
+; CHECK: call void @loop_end()
+  br label %return
+
+if.end:
+  %3 = load ptr, ptr %a.addr, align 8
+  %4 = load i32, ptr %3, align 4
+  %5 = load i32, ptr %i, align 4
+  %add = add nsw i32 %4, %5
+  %6 = load ptr, ptr %a.addr, align 8
+  store i32 %add, ptr %6, align 4
   br label %while.cond
 
 while.end:
+  %7 = load i32, ptr %i, align 4
+  %sub = sub nsw i32 %7, 1
+  %8 = load ptr, ptr %a.addr, align 8
+  %9 = load i32, ptr %8, align 4
+  %mul = mul nsw i32 %9, %sub
+  store i32 %mul, ptr %8, align 4
+  store i32 2, ptr %retval, align 4
 ; CHECK: call void @loop_end()
-  ret void
+  br label %return
+
+return:
+  %10 = load i32, ptr %retval, align 4
+  ret i32 %10
 }
-
-declare void @loop_start()() #2
-
-declare void @loop_end()() #2
