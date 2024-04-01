@@ -15,6 +15,27 @@
 ;     }
 ;     int q = c + 42;
 ; }
+;
+; void SomeFunction() {
+;     int k = 0;
+;     while (k < 10) {
+;         k++;
+;     }
+; }
+; void SomeFunction_123() {
+;     int k = 0;
+;     do {
+;         k++;
+;     } while (k < 10);
+; }
+;
+; void SomeFunctionWithSwitch() {
+;     int k = 0;
+;     switch (k){
+;         case(1): break;
+;         default: break;
+;     }
+; }
 
 define dso_local void @_Z3fooii(i32 noundef %n, i32 noundef %m) {
 entry:
@@ -84,5 +105,74 @@ for.end:
   %3 = load i32, ptr %c, align 4
   %add = add nsw i32 %3, 42
   store i32 %add, ptr %q, align 4
+  ret void
+}
+
+define dso_local void @SomeFunction()() {
+entry:
+  %k = alloca i32, align 4
+  store i32 0, ptr %k, align 4
+; CHECK: call void @loop_start()
+  br label %while.cond
+
+while.cond:
+  %0 = load i32, ptr %k, align 4
+  %cmp = icmp slt i32 %0, 10
+  br i1 %cmp, label %while.body, label %while.end
+
+while.body:
+  %1 = load i32, ptr %k, align 4
+  %inc = add nsw i32 %1, 1
+  store i32 %inc, ptr %k, align 4
+  br label %while.cond
+
+while.end:
+; CHECK: call void @loop_end()
+  ret void
+}
+
+define dso_local void @SomeFunction_123()() {
+entry:
+  %k = alloca i32, align 4
+  store i32 0, ptr %k, align 4
+; CHECK: call void @loop_start()
+  br label %do.body
+
+do.body:
+  %0 = load i32, ptr %k, align 4
+  %inc = add nsw i32 %0, 1
+  store i32 %inc, ptr %k, align 4
+  br label %do.cond
+
+do.cond:
+  %1 = load i32, ptr %k, align 4
+  %cmp = icmp slt i32 %1, 10
+  br i1 %cmp, label %do.body, label %do.end
+
+do.end:
+; CHECK: call void @loop_end()
+  ret void
+}
+
+; CHECK-LABEL:  @SomeFunctionWithSwitch
+; CHECK-NOT: call void @loop_start()
+; CHECK-NOT: call void @loop_end()
+; CHECK: ret void
+define dso_local void @SomeFunctionWithSwitch()() {
+entry:
+  %k = alloca i32, align 4
+  store i32 0, ptr %k, align 4
+  %0 = load i32, ptr %k, align 4
+  switch i32 %0, label %sw.default [
+    i32 1, label %sw.bb
+  ]
+
+sw.bb:
+  br label %sw.epilog
+
+sw.default:
+  br label %sw.epilog
+
+sw.epilog:
   ret void
 }
