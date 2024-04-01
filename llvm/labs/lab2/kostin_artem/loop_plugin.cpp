@@ -36,7 +36,7 @@ struct LoopStartEnd : public PassInfoMixin<LoopStartEnd> {
               "loop_start", LoopFuncType));
         }
       }
-      SmallVector<BasicBlock *, 4> ExitBlocks;
+      SmallVector<BasicBlock *, 8> ExitBlocks;
       Loop->getExitBlocks(ExitBlocks);
       bool LoopEndInFunc = false;
       for (BasicBlock *ExitBlock : ExitBlocks) {
