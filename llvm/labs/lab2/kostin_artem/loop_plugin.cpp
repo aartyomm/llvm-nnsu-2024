@@ -20,28 +20,41 @@ struct LoopStartEnd : public PassInfoMixin<LoopStartEnd> {
       BasicBlock *EntryBlock = Loop->getLoopPreheader();
       IRBuilder<> FuncBuilder(Loop->getHeader()->getContext());
       if (EntryBlock != nullptr) {
-        Instruction *FirstInst = EntryBlock->getFirstNonPHI();
-        if (isa<CallInst>(FirstInst) &&
-            cast<CallInst>(FirstInst)->getCalledFunction()->getName() ==
-                "loop_start") {
-          continue;
+        bool LoopStartInFunc = false;
+        for (Instruction &Instr : *EntryBlock) {
+          if (CallInst *CI = dyn_cast<CallInst>(&Instr)) {
+            if (CI->getCalledFunction() &&
+                CI->getCalledFunction()->getName() == "loop_start") {
+              LoopStartInFunc = true;
+              break;
+            }
+          }
         }
-        FuncBuilder.SetInsertPoint(EntryBlock->getTerminator());
-        FuncBuilder.CreateCall(ModuleOfPfuncParent->getOrInsertFunction(
-            "loop_start", LoopFuncType));
+        if (!LoopStartInFunc) {
+          FuncBuilder.SetInsertPoint(EntryBlock->getTerminator());
+          FuncBuilder.CreateCall(ModuleOfPfuncParent->getOrInsertFunction(
+              "loop_start", LoopFuncType));
+        }
       }
       SmallVector<BasicBlock *, 4> ExitBlocks;
       Loop->getExitBlocks(ExitBlocks);
+      bool LoopEndInFunc = false;
       for (BasicBlock *ExitBlock : ExitBlocks) {
-        Instruction *LastInst = ExitBlock->getTerminator();
-        if (isa<CallInst>(LastInst) &&
-            cast<CallInst>(LastInst)->getCalledFunction()->getName() ==
-                "loop_end") {
-          continue;
+        LoopEndInFunc = false;
+        for (Instruction &Instr : *ExitBlock) {
+          if (CallInst *CI = dyn_cast<CallInst>(&Instr)) {
+            if (CI->getCalledFunction() &&
+                CI->getCalledFunction()->getName() == "loop_end") {
+              LoopEndInFunc = true;
+              break;
+            }
+          }
         }
-        FuncBuilder.SetInsertPoint(&*ExitBlock->getFirstInsertionPt());
-        FuncBuilder.CreateCall(
-            ModuleOfPfuncParent->getOrInsertFunction("loop_end", LoopFuncType));
+        if (!LoopEndInFunc) {
+          FuncBuilder.SetInsertPoint(&*ExitBlock->getFirstInsertionPt());
+          FuncBuilder.CreateCall(ModuleOfPfuncParent->getOrInsertFunction(
+              "loop_end", LoopFuncType));
+        }
       }
     }
     return PreservedAnalyses::all();
