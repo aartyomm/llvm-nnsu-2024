@@ -25,10 +25,14 @@ struct LoopStartEnd : public PassInfoMixin<LoopStartEnd> {
         FuncBuilder.CreateCall(ModuleOfPfuncParent->getOrInsertFunction(
             "loop_start", LoopFuncType));
       }
-      if (ExitBlock != nullptr) {
-        FuncBuilder.SetInsertPoint(&*ExitBlock->getFirstInsertionPt());
-        FuncBuilder.CreateCall(
-            ModuleOfPfuncParent->getOrInsertFunction("loop_end", LoopFuncType));
+      SmallVector<BasicBlock *, 4> ExitBlocks;
+      Loop->getExitBlocks(ExitBlocks);
+      for (BasicBlock *ExitBlock : ExitBlocks) {
+        if (ExitBlock != nullptr) {
+          FuncBuilder.SetInsertPoint(&*ExitBlock->getFirstInsertionPt());
+          FuncBuilder.CreateCall(ModuleOfPfuncParent->getOrInsertFunction(
+              "loop_end", LoopFuncType));
+        }
       }
     }
     return PreservedAnalyses::all();
