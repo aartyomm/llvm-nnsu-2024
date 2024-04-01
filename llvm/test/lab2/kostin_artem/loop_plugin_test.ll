@@ -277,3 +277,4 @@ return:
   %10 = load i32, ptr %retval, align 4
   ret i32 %10
 }
+
