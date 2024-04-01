@@ -29,6 +29,16 @@
 ;     } while (k < 10);
 ; }
 ;
+; void LoopWithRet() {
+;     int i = 0;
+;     while(true){
+;         i++;
+;         if (i > 10) {
+;             return;
+;         }
+;     }
+; }
+;
 ; void SomeFunctionWithSwitch() {
 ;     int k = 0;
 ;     switch (k){
@@ -176,3 +186,53 @@ sw.default:
 sw.epilog:
   ret void
 }
+
+define dso_local void @LoopWithRet()() {
+entry:
+  %i = alloca i32, align 4
+  store i32 0, ptr %i, align 4
+; CHECK: call void @loop_start()
+  br label %while.body
+
+while.body:
+  %0 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %0, 1
+  store i32 %inc, ptr %i, align 4
+  %1 = load i32, ptr %i, align 4
+  %cmp = icmp sgt i32 %1, 10
+  br i1 %cmp, label %if.then, label %if.end
+
+if.then:
+; CHECK: call void @loop_end()
+  ret void
+
+if.end:
+  br label %while.body
+}
+
+define dso_local void @LoopWithloop_()() {
+entry:
+  %i = alloca i32, align 4
+  store i32 0, ptr %i, align 4
+; CHECK: call void @loop_start()
+  br label %while.cond
+
+while.cond:
+  %0 = load i32, ptr %i, align 4
+  %cmp = icmp slt i32 %0, 10
+  br i1 %cmp, label %while.body, label %while.end
+
+while.body:
+  %1 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %1, 1
+  store i32 %inc, ptr %i, align 4
+  br label %while.cond
+
+while.end:
+; CHECK: call void @loop_end()
+  ret void
+}
+
+declare void @loop_start()() #2
+
+declare void @loop_end()() #2
