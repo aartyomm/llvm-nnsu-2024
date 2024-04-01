@@ -18,7 +18,6 @@ struct LoopStartEnd : public PassInfoMixin<LoopStartEnd> {
         Panalysis.getResult<LoopAnalysis>(Pfunction);
     for (auto &Loop : GetAnalysis) {
       BasicBlock *EntryBlock = Loop->getLoopPreheader();
-      BasicBlock *ExitBlock = Loop->getExitBlock();
       IRBuilder<> FuncBuilder(Loop->getHeader()->getContext());
       if (EntryBlock != nullptr) {
         FuncBuilder.SetInsertPoint(EntryBlock->getTerminator());
@@ -28,11 +27,9 @@ struct LoopStartEnd : public PassInfoMixin<LoopStartEnd> {
       SmallVector<BasicBlock *, 4> ExitBlocks;
       Loop->getExitBlocks(ExitBlocks);
       for (BasicBlock *ExitBlock : ExitBlocks) {
-        if (ExitBlock != nullptr) {
-          FuncBuilder.SetInsertPoint(&*ExitBlock->getFirstInsertionPt());
-          FuncBuilder.CreateCall(ModuleOfPfuncParent->getOrInsertFunction(
-              "loop_end", LoopFuncType));
-        }
+        FuncBuilder.SetInsertPoint(&*ExitBlock->getFirstInsertionPt());
+        FuncBuilder.CreateCall(
+            ModuleOfPfuncParent->getOrInsertFunction("loop_end", LoopFuncType));
       }
     }
     return PreservedAnalyses::all();

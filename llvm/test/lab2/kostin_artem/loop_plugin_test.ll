@@ -133,7 +133,7 @@ for.end:
   ret void
 }
 
-define dso_local void @SomeFunction()() {
+define dso_local void @SomeFunction() {
 entry:
   %k = alloca i32, align 4
   store i32 0, ptr %k, align 4
@@ -156,7 +156,7 @@ while.end:
   ret void
 }
 
-define dso_local void @SomeFunction_123()() {
+define dso_local void @SomeFunction_123() {
 entry:
   %k = alloca i32, align 4
   store i32 0, ptr %k, align 4
@@ -183,7 +183,7 @@ do.end:
 ; CHECK-NOT: call void @loop_start()
 ; CHECK-NOT: call void @loop_end()
 ; CHECK: ret void
-define dso_local void @SomeFunctionWithSwitch()() {
+define dso_local void @SomeFunctionWithSwitch() {
 entry:
   %k = alloca i32, align 4
   store i32 0, ptr %k, align 4
@@ -202,7 +202,7 @@ sw.epilog:
   ret void
 }
 
-define dso_local void @LoopWithRet()() {
+define dso_local void @LoopWithRet() {
 entry:
   %i = alloca i32, align 4
   store i32 0, ptr %i, align 4
@@ -225,7 +225,7 @@ if.end:
   br label %while.body
 }
 
-define dso_local noundef i32 @LoopWith2Exit(int&)(ptr noundef nonnull align 4 dereferenceable(4) %a) {
+define dso_local noundef i32 @_Z13LoopWith2ExitRi(ptr noundef nonnull align 4 dereferenceable(4) %a) {
 entry:
   %retval = alloca i32, align 4
   %a.addr = alloca ptr, align 8
