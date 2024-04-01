@@ -290,11 +290,11 @@ return:
   ret i32 %10
 }
 
-define dso_local void @_Z17FunctionWithLoop_v() {
+define dso_local void @FunctionWithLoop_() {
 entry:
   %i = alloca i32, align 4
   store i32 0, ptr %i, align 4
-; CHECK: call void @_Z10loop_startv()
+; CHECK: call void @loop_start()
   br label %while.cond
 
 while.cond:
@@ -309,10 +309,10 @@ while.body:
   br label %while.cond
 
 while.end:
-; CHECK call void @_Z8loop_endv()
+; CHECK call void @loop_end()
   ret void
 }
 
-declare void @_Z10loop_startv()
+declare void @loop_start()
 
-declare void @_Z8loop_endv()
+declare void @loop_end()
