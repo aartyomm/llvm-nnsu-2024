@@ -245,6 +245,8 @@ entry:
   store ptr %a, ptr %a.addr, align 8
   store i32 0, ptr %i, align 4
 ; CHECK: call void @loop_start()
+; CHECK-NEXT-NOT: call void @loop_start()
+  call void @loop_start()
   br label %while.cond
 
 while.cond:
@@ -309,7 +311,9 @@ while.body:
   br label %while.cond
 
 while.end:
-; CHECK call void @loop_end()
+; CHECK: call void @loop_end()
+; CHECK-NEXT-NOT: call void @loop_end()
+  call void @loop_end()
   ret void
 }
 
