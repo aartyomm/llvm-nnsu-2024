@@ -20,6 +20,12 @@ struct LoopStartEnd : public PassInfoMixin<LoopStartEnd> {
       BasicBlock *EntryBlock = Loop->getLoopPreheader();
       IRBuilder<> FuncBuilder(Loop->getHeader()->getContext());
       if (EntryBlock != nullptr) {
+        Instruction *FirstInst = EntryBlock->getFirstNonPHI();
+        if (isa<CallInst>(FirstInst) &&
+            cast<CallInst>(FirstInst)->getCalledFunction()->getName() ==
+                "loop_start") {
+          continue;
+        }
         FuncBuilder.SetInsertPoint(EntryBlock->getTerminator());
         FuncBuilder.CreateCall(ModuleOfPfuncParent->getOrInsertFunction(
             "loop_start", LoopFuncType));
@@ -27,6 +33,12 @@ struct LoopStartEnd : public PassInfoMixin<LoopStartEnd> {
       SmallVector<BasicBlock *, 4> ExitBlocks;
       Loop->getExitBlocks(ExitBlocks);
       for (BasicBlock *ExitBlock : ExitBlocks) {
+        Instruction *LastInst = ExitBlock->getTerminator();
+        if (isa<CallInst>(LastInst) &&
+            cast<CallInst>(LastInst)->getCalledFunction()->getName() ==
+                "loop_end") {
+          continue;
+        }
         FuncBuilder.SetInsertPoint(&*ExitBlock->getFirstInsertionPt());
         FuncBuilder.CreateCall(
             ModuleOfPfuncParent->getOrInsertFunction("loop_end", LoopFuncType));

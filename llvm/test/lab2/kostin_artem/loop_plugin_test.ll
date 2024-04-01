@@ -60,6 +60,18 @@
 ;     a *= i - 1;
 ;     return 2;
 ; }
+;
+; void loop_start();
+; void loop_end();
+;
+; void FunctionWithLoop_(){
+;     int i = 0;
+;     loop_start();
+;     while(i < 10){
+;         i++;
+;     }
+;     loop_end();
+; }
 
 
 define dso_local void @_Z3fooii(i32 noundef %n, i32 noundef %m) {
@@ -278,3 +290,29 @@ return:
   ret i32 %10
 }
 
+define dso_local void @_Z17FunctionWithLoop_v() {
+entry:
+  %i = alloca i32, align 4
+  store i32 0, ptr %i, align 4
+; CHECK: call void @_Z10loop_startv()
+  br label %while.cond
+
+while.cond:
+  %0 = load i32, ptr %i, align 4
+  %cmp = icmp slt i32 %0, 10
+  br i1 %cmp, label %while.body, label %while.end
+
+while.body:
+  %1 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %1, 1
+  store i32 %inc, ptr %i, align 4
+  br label %while.cond
+
+while.end:
+; CHECK call void @_Z8loop_endv()
+  ret void
+}
+
+declare void @_Z10loop_startv()
+
+declare void @_Z8loop_endv()
