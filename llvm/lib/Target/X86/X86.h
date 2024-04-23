@@ -204,7 +204,7 @@ void initializeX86SpeculativeExecutionSideEffectSuppressionPass(PassRegistry &);
 void initializeX86SpeculativeLoadHardeningPassPass(PassRegistry &);
 void initializeX86TileConfigPass(PassRegistry &);
 
-void initializeX86KostinPass(PassRegistry &);
+void initializeKostinPassPass(PassRegistry &);
 
 namespace X86AS {
 enum : unsigned {
