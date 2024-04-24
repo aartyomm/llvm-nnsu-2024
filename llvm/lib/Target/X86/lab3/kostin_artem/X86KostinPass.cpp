@@ -47,7 +47,7 @@ void X86KostinPass::identifyReplaceableInstructions(MachineFunction &MF) {
           ToReplace.emplace_back(Mul, &MI);
           Mul = nullptr;
         }
-      } else if (MI.definesRegister(Mul ? Mul->getOperand(0).getReg() : 0)) {
+      } else if (MI.definesRegister(Mul ? Mul->getOperand(0).getReg() : Register())) {
         Mul = nullptr;
       }
     }
