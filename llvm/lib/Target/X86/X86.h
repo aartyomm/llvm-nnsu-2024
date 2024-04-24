@@ -158,8 +158,6 @@ FunctionPass *createX86InsertX87waitPass();
 /// ways.
 FunctionPass *createX86PartialReductionPass();
 
-FunctionPass *createX86KostinPass();
-
 InstructionSelector *createX86InstructionSelector(const X86TargetMachine &TM,
                                                   X86Subtarget &,
                                                   X86RegisterBankInfo &);
@@ -203,8 +201,6 @@ void initializeX86ReturnThunksPass(PassRegistry &);
 void initializeX86SpeculativeExecutionSideEffectSuppressionPass(PassRegistry &);
 void initializeX86SpeculativeLoadHardeningPassPass(PassRegistry &);
 void initializeX86TileConfigPass(PassRegistry &);
-
-void initializeKostinPassPass(PassRegistry &);
 
 namespace X86AS {
 enum : unsigned {

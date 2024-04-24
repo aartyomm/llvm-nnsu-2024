@@ -23,7 +23,6 @@ tablegen(LLVM X86GenFoldTables.inc -gen-x86-fold-tables -asmwriternum=1)
 add_public_tablegen_target(X86CommonTableGen)
 
 set(sources
-  X86KostinPass.cpp
   X86ArgumentStackSlotRebase.cpp
   X86AsmPrinter.cpp
   X86AvoidTrailingCall.cpp
@@ -119,3 +118,4 @@ add_subdirectory(Disassembler)
 add_subdirectory(MCA)
 add_subdirectory(MCTargetDesc)
 add_subdirectory(TargetInfo)
+add_subdirectory(lab3)
