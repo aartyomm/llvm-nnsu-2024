@@ -1,101 +1,66 @@
 # RUN: llc -mtriple x86_64-unknown-linux-gnu -run-pass=x86-kostin-pass  %s -o - | FileCheck %s
 
-# main.cpp
-#
-# __m128d simple_test(__m128d a, __m128d b, __m128d c, __m128d d) {
-# 	__m128d temp = a * b;
-# 	d = temp + c;
-# 	return d;
+# test.c
+# __m128d test_base(__m128d a, __m128d b, __m128d c, __m128d d) {
+#     __m128d tmp = a * b;
+#     d = tmp + c;
+#     return d;
 # }
-#
-# __m128d middle_test(__m128d a, __m128d b, __m128d c, __m128d d, __m128d e) {
-#     __m128d temp = a * b;
-# 	__m128d i = temp + c;
-#     __m128d j = temp + d;
-#     __m128d k = temp + e;
-#     return i * j * k;
+
+# __m128d test_two_ops(__m128d a, __m128d b, __m128d c, __m128d d) {
+#     __m128d tmp = a * b;
+#     a = a + b;
+#     b = b * b + a;
+#     d = tmp + c;
+#     return d * b;
 # }
-#
-#  __m128d hard_test(__m128d a, __m128d b, __m128d c, __m128d d) {
-# 	__m128d t = a * b;
-# 	a = a + b;
-# 	b = b * b + a;
-# 	d = t + c;
-# 	return d / b;
+
+# __m128d test_3(__m128d a, __m128d b, __m128d c, __m128d d) {
+#     __m128d tmp = a * b;
+#     __m128d tmp2 = tmp + c;
+#     __m128d tmp3 = d + tmp;
+#     return tmp2 / tmp3;
 # }
-#
-# __m128d test_without_muladd(__m128d a, __m128d b, __m128d c, __m128d d, __m128d e) {
-# 	d = a * b;
-# 	e = a + c;
-# 	return d - e;
-# }
+
+# clang -O3 -S -emit-llvm test.c -o test.ll
+# llc -mtriple x86_64-unknown-linux-gnu -stop-after=x86-isel test.ll -o test.mir
 
 --- |
-  ; ModuleID = 'main.ll'
-  source_filename = "main.cpp"
-  target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-  target triple = "x86_64-unknown-linux-gnu"
-
   ; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none) uwtable
-  define dso_local noundef <2 x double> @_Z12simple_testDv2_dS_S_(<2 x double> noundef %0, <2 x double> noundef %1, <2 x double> noundef %2, <2 x double> noundef %3) local_unnamed_addr #0 {
+  define dso_local noundef <2 x double> @_Z9test_baseDv2_dS_S_S_(<2 x double> noundef %a, <2 x double> noundef %b, <2 x double> noundef %c, <2 x double> noundef %d) local_unnamed_addr #0 {
   entry:
-    %4 = fmul <2 x double> %0, %1
-    %5 = fadd <2 x double> %4, %2
-    ret <2 x double> %5
-  }
-
-  ; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none) uwtable
-  define dso_local noundef <2 x double> @_Z12middle_testDv2_dS_S_(<2 x double> noundef %0, <2 x double> noundef %1, <2 x double> noundef %2, <2 x double> noundef %3, <2 x double> noundef %4) local_unnamed_addr #0 {
-  entry:
-    %5 = fmul <2 x double> %0, %1
-    %6 = fadd <2 x double> %5, %2
-    %7 = fadd <2 x double> %5, %3
-    %8 = fadd <2 x double> %5, %4
-    %9 = fmul <2 x double> %6, %7
-    %10 = fmul <2 x double> %9, %8
-    ret <2 x double> %10
+    %mul = fmul <2 x double> %a, %b
+    %add = fadd <2 x double> %mul, %c
+    ret <2 x double> %add
   }
 
   ; Function Attrs: mustprogress nofree nosync nounwind willreturn memory(none) uwtable
-  define dso_local noundef <2 x double> @_Z12hard_testDv2_dS_S_(<2 x double> noundef %0, <2 x double> noundef %1, <2 x double> noundef %2, <2 x double> noundef %3) local_unnamed_addr #1 {
+  define dso_local noundef <2 x double> @_Z12test_two_opsDv2_dS_S_S_(<2 x double> noundef %a, <2 x double> noundef %b, <2 x double> noundef %c, <2 x double> noundef %d) local_unnamed_addr #1 {
   entry:
-    %4 = fmul <2 x double> %0, %1
-    %5 = fadd <2 x double> %0, %1
-    %6 = tail call <2 x double> @llvm.fmuladd.v2f64(<2 x double> %1, <2 x double> %1, <2 x double> %5)
-    %7 = fadd <2 x double> %4, %2
-    %8 = fdiv <2 x double> %7, %6
-    ret <2 x double> %8
+    %mul = fmul <2 x double> %a, %b
+    %add = fadd <2 x double> %a, %b
+    %0 = tail call <2 x double> @llvm.fmuladd.v2f64(<2 x double> %b, <2 x double> %b, <2 x double> %add)
+    %add2 = fadd <2 x double> %mul, %c
+    %mul3 = fmul <2 x double> %add2, %0
+    ret <2 x double> %mul3
   }
 
   ; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
-  declare <2 x double> @llvm.fmuladd.v2f64(<2 x double>, <2 x double>, <2 x double>) #1
-
+  declare <2 x double> @llvm.fmuladd.v2f64(<2 x double>, <2 x double>, <2 x double>) #2
 
   ; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none) uwtable
-  define dso_local noundef <2 x double> @_Z12test_without_muladdDv2_dS_S_(<2 x double> noundef %0, <2 x double> noundef %1, <2 x double> noundef %2, <2 x double> noundef %3, <2 x double> noundef %4) local_unnamed_addr #0 {
+  define dso_local noundef <2 x double> @_Z6test_3Dv2_dS_S_S_(<2 x double> noundef %a, <2 x double> noundef %b, <2 x double> noundef %c, <2 x double> noundef %d) local_unnamed_addr #0 {
   entry:
-    %5 = fmul <2 x double> %0, %1
-    %6 = fadd <2 x double> %0, %2
-    %7 = fsub <2 x double> %5, %6
-    ret <2 x double> %7
+    %mul = fmul <2 x double> %a, %b
+    %add = fadd <2 x double> %mul, %c
+    %add1 = fadd <2 x double> %mul, %d
+    %div = fdiv <2 x double> %add, %add1
+    ret <2 x double> %div
   }
 
-  attributes #0 = { mustprogress nofree nosync nounwind willreturn memory(none) uwtable "min-legal-vector-width"="128" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-  attributes #1 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }
-  attributes #2 = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) uwtable "min-legal-vector-width"="128" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-
-  !llvm.module.flags = !{!0, !1, !2, !3}
-  !llvm.ident = !{!4}
-
-  !0 = !{i32 1, !"wchar_size", i32 4}
-  !1 = !{i32 8, !"PIC Level", i32 2}
-  !2 = !{i32 7, !"PIE Level", i32 2}
-  !3 = !{i32 7, !"uwtable", i32 2}
-  !4 = !{!"clang version 17.0.6 (https://github.com/Kuznetsov-Artyom/llvm-nnsu-2024 a7816066a7b000bd8961dacdc49fc4d7b6c649f0)"}
-
 ...
 ---
-name:            _Z12simple_testDv2_dS_S_
+name:            _Z9test_baseDv2_dS_S_S_
 alignment:       16
 exposesReturnsTwice: false
 legalized:       false
@@ -110,14 +75,19 @@ hasEHCatchret:   false
 hasEHScopes:     false
 hasEHFunclets:   false
 isOutlined:      false
-debugInstrRef:   true
+debugInstrRef:   false
 failsVerification: false
-tracksDebugUserValues: true
-registers:       []
+tracksDebugUserValues: false
+registers:
+  - { id: 0, class: vr128, preferred-register: '' }
+  - { id: 1, class: vr128, preferred-register: '' }
+  - { id: 2, class: vr128, preferred-register: '' }
+  - { id: 3, class: vr128, preferred-register: '' }
+  - { id: 4, class: vr128, preferred-register: '' }
 liveins:
-  - { reg: '$xmm0', virtual-reg: '' }
-  - { reg: '$xmm1', virtual-reg: '' }
-  - { reg: '$xmm2', virtual-reg: '' }
+  - { reg: '$xmm0', virtual-reg: '%0' }
+  - { reg: '$xmm1', virtual-reg: '%1' }
+  - { reg: '$xmm2', virtual-reg: '%2' }
 frameInfo:
   isFrameAddressTaken: false
   isReturnAddressTaken: false
@@ -125,12 +95,12 @@ frameInfo:
   hasPatchPoint:   false
   stackSize:       0
   offsetAdjustment: 0
-  maxAlignment:    1
+  maxAlignment:    16
   adjustsStack:    false
   hasCalls:        false
   stackProtector:  ''
   functionContext: ''
-  maxCallFrameSize: 0
+  maxCallFrameSize: 4294967295
   cvBytesOfCalleeSavedRegisters: 0
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
@@ -139,7 +109,10 @@ frameInfo:
   localFrameSize:  0
   savePoint:       ''
   restorePoint:    ''
-fixedStack:      []
+fixedStack:
+  - { id: 0, type: default, offset: 0, size: 16, alignment: 4, stack-id: default,
+      isImmutable: true, isAliased: false, callee-saved-register: '', callee-saved-restored: true,
+      debug-info-variable: '', debug-info-expression: '', debug-info-location: '' }
 stack:           []
 entry_values:    []
 callSites:       []
@@ -150,17 +123,18 @@ body:             |
   bb.0.entry:
     liveins: $xmm0, $xmm1, $xmm2
 
-    renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, killed renamable $xmm1, implicit $mxcsr
-    renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm0, killed renamable $xmm2, implicit $mxcsr
-    RET64 $xmm0
-    ; CHECK: liveins: $xmm0, $xmm1, $xmm2
-    ; CHECK-NOT: renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, killed renamable $xmm1, implicit $mxcsr
-    ; CHECK-NOT: renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm0, killed renamable $xmm2, implicit $mxcsr
-    ; CHECK: $xmm0 = VFMADD213PDr $xmm0, $xmm1, $xmm2, implicit $mxcsr
-    ; CHECK-NEXT: RET64 $xmm0
+    %2:vr128 = COPY $xmm2
+    %1:vr128 = COPY $xmm1
+    %0:vr128 = COPY $xmm0
+    ; CHECK: %4:vr128 = VFMADD213PDr %0, %1, %2, implicit $mxcsr
+    ; CHECK-NEXT: $xmm0 = COPY %4
+    %3:vr128 = nofpexcept MULPDrr %0, %1, implicit $mxcsr
+    %4:vr128 = nofpexcept ADDPDrr %3, %2, implicit $mxcsr
+    $xmm0 = COPY %4
+    RET 0, $xmm0
 ...
 ---
-name:            _Z12middle_testDv2_dS_S_
+name:            _Z12test_two_opsDv2_dS_S_S_
 alignment:       16
 exposesReturnsTwice: false
 legalized:       false
@@ -175,14 +149,23 @@ hasEHCatchret:   false
 hasEHScopes:     false
 hasEHFunclets:   false
 isOutlined:      false
-debugInstrRef:   true
+debugInstrRef:   false
 failsVerification: false
-tracksDebugUserValues: true
-registers:       []
+tracksDebugUserValues: false
+registers:
+  - { id: 0, class: vr128, preferred-register: '' }
+  - { id: 1, class: vr128, preferred-register: '' }
+  - { id: 2, class: vr128, preferred-register: '' }
+  - { id: 3, class: vr128, preferred-register: '' }
+  - { id: 4, class: vr128, preferred-register: '' }
+  - { id: 5, class: vr128, preferred-register: '' }
+  - { id: 6, class: vr128, preferred-register: '' }
+  - { id: 7, class: vr128, preferred-register: '' }
+  - { id: 8, class: vr128, preferred-register: '' }
 liveins:
-  - { reg: '$xmm0', virtual-reg: '' }
-  - { reg: '$xmm1', virtual-reg: '' }
-  - { reg: '$xmm2', virtual-reg: '' }
+  - { reg: '$xmm0', virtual-reg: '%0' }
+  - { reg: '$xmm1', virtual-reg: '%1' }
+  - { reg: '$xmm2', virtual-reg: '%2' }
 frameInfo:
   isFrameAddressTaken: false
   isReturnAddressTaken: false
@@ -190,12 +173,12 @@ frameInfo:
   hasPatchPoint:   false
   stackSize:       0
   offsetAdjustment: 0
-  maxAlignment:    1
+  maxAlignment:    16
   adjustsStack:    false
   hasCalls:        false
   stackProtector:  ''
   functionContext: ''
-  maxCallFrameSize: 0
+  maxCallFrameSize: 4294967295
   cvBytesOfCalleeSavedRegisters: 0
   hasOpaqueSPAdjustment: false
   hasVAStart:      false
@@ -204,161 +187,10 @@ frameInfo:
   localFrameSize:  0
   savePoint:       ''
   restorePoint:    ''
-fixedStack:      []
-stack:           []
-entry_values:    []
-callSites:       []
-debugValueSubstitutions: []
-constants:       []
-machineFunctionInfo: {}
-body:             |
-  bb.0.entry:
-    liveins: $xmm0, $xmm1, $xmm2, $xmm3, $xmm4
-
-    renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, killed renamable $xmm1, implicit $mxcsr
-    renamable $xmm2 = nofpexcept ADDPDrr killed renamable $xmm2, renamable $xmm0, implicit $mxcsr
-    renamable $xmm3 = nofpexcept ADDPDrr killed renamable $xmm3, renamable $xmm0, implicit $mxcsr
-    renamable $xmm3 = nofpexcept MULPDrr killed renamable $xmm3, killed renamable $xmm2, implicit $mxcsr
-    renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm0, killed renamable $xmm4, implicit $mxcsr
-    renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, killed renamable $xmm3, implicit $mxcsr
-    RET64 $xmm0
-    ; CHECK: liveins: $xmm0, $xmm1, $xmm2, $xmm3, $xmm4
-    ; CHECK-NOT: renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, killed renamable $xmm1, implicit $mxcsr
-    ; CHECK-NOT: renamable $xmm2 = nofpexcept ADDPDrr killed renamable $xmm2, renamable $xmm0, implicit $mxcsr
-    ; CHECK-NOT: renamable $xmm3 = nofpexcept ADDPDrr killed renamable $xmm3, renamable $xmm0, implicit $mxcsr
-    ; CHECK-NOT: renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm0, killed renamable $xmm4, implicit $mxcsr
-    ; CHECK: $xmm2 = VFMADD213PDr $xmm0, $xmm1, $xmm2, implicit $mxcsr
-    ; CHECK-NEXT: $xmm3 = VFMADD213PDr $xmm0, $xmm1, $xmm3, implicit $mxcsr
-    ; CHECK-NEXT: $xmm0 = VFMADD213PDr $xmm0, $xmm1, $xmm4, implicit $mxcsr
-    ; CHECK-NEXT: renamable $xmm3 = nofpexcept MULPDrr killed renamable $xmm3, killed renamable $xmm2, implicit $mxcsr
-    ; CHECK-NEXT: renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, killed renamable $xmm3, implicit $mxcsr
-    ; CHECK-NEXT: RET64 $xmm0
-...
----
-name:            _Z12hard_testDv2_dS_S_
-alignment:       16
-exposesReturnsTwice: false
-legalized:       false
-regBankSelected: false
-selected:        false
-failedISel:      false
-tracksRegLiveness: true
-hasWinCFI:       false
-callsEHReturn:   false
-callsUnwindInit: false
-hasEHCatchret:   false
-hasEHScopes:     false
-hasEHFunclets:   false
-isOutlined:      false
-debugInstrRef:   true
-failsVerification: false
-tracksDebugUserValues: true
-registers:       []
-liveins:
-  - { reg: '$xmm0', virtual-reg: '' }
-  - { reg: '$xmm1', virtual-reg: '' }
-  - { reg: '$xmm2', virtual-reg: '' }
-frameInfo:
-  isFrameAddressTaken: false
-  isReturnAddressTaken: false
-  hasStackMap:     false
-  hasPatchPoint:   false
-  stackSize:       0
-  offsetAdjustment: 0
-  maxAlignment:    1
-  adjustsStack:    false
-  hasCalls:        false
-  stackProtector:  ''
-  functionContext: ''
-  maxCallFrameSize: 0
-  cvBytesOfCalleeSavedRegisters: 0
-  hasOpaqueSPAdjustment: false
-  hasVAStart:      false
-  hasMustTailInVarArgFunc: false
-  hasTailCall:     false
-  localFrameSize:  0
-  savePoint:       ''
-  restorePoint:    ''
-fixedStack:      []
-stack:           []
-entry_values:    []
-callSites:       []
-debugValueSubstitutions: []
-constants:       []
-machineFunctionInfo: {}
-body:             |
-  bb.0.entry:
-    liveins: $xmm0, $xmm1, $xmm2
-    $xmm3 = MOVAPDrr $xmm0
-    renamable $xmm3 = nofpexcept MULPDrr killed renamable $xmm3, renamable $xmm1, implicit $mxcsr
-    renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm0, renamable $xmm1, implicit $mxcsr
-    renamable $xmm1 = nofpexcept MULPDrr killed renamable $xmm1, renamable $xmm1, implicit $mxcsr
-    renamable $xmm1 = nofpexcept ADDPDrr killed renamable $xmm1, killed renamable $xmm0, implicit $mxcsr
-    renamable $xmm3 = nofpexcept ADDPDrr killed renamable $xmm3, killed renamable $xmm2, implicit $mxcsr
-    renamable $xmm3 = nofpexcept DIVPDrr killed renamable $xmm3, killed renamable $xmm1, implicit $mxcsr
-    $xmm0 = MOVAPDrr killed $xmm3
-    RET64 $xmm0
-    ; CHECK: liveins: $xmm0, $xmm1, $xmm2
-    ; CHECK: $xmm3 = VFMADD213PDr $xmm3, $xmm1, $xmm2, implicit $mxcsr
-
-    ; CHECK-NOT: renamable $xmm3 = nofpexcept MULPDrr killed renamable $xmm3, renamable $xmm1, implicit $mxcsr
-    ; CHECK: renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm0, renamable $xmm1, implicit $mxcsr
-    ; CHECK-NOT: renamable $xmm1 = nofpexcept MULPDrr killed renamable $xmm1, renamable $xmm1, implicit $mxcsr
-    ; CHECK-NOT: renamable $xmm1 = nofpexcept ADDPDrr killed renamable $xmm1, killed renamable $xmm0, implicit $mxcsr
-    ; CHECK-NOT: renamable $xmm3 = nofpexcept ADDPDrr killed renamable $xmm3, killed renamable $xmm2, implicit $mxcsr
-
-    ; CHECK: $xmm1 = VFMADD213PDr $xmm1, $xmm1, $xmm0, implicit $mxcsr
-    ; CHECK: renamable $xmm3 = nofpexcept DIVPDrr killed renamable $xmm3, killed renamable $xmm1, implicit $mxcsr
-    ; CHECK-NEXT: $xmm0 = MOVAPDrr killed $xmm3
-    ; CHECK-NEXT: RET64 $xmm0
-
-...
----
-name:            _Z12test_without_muladdDv2_dS_S_
-alignment:       16
-exposesReturnsTwice: false
-legalized:       false
-regBankSelected: false
-selected:        false
-failedISel:      false
-tracksRegLiveness: true
-hasWinCFI:       false
-callsEHReturn:   false
-callsUnwindInit: false
-hasEHCatchret:   false
-hasEHScopes:     false
-hasEHFunclets:   false
-isOutlined:      false
-debugInstrRef:   true
-failsVerification: false
-tracksDebugUserValues: true
-registers:       []
-liveins:
-  - { reg: '$xmm0', virtual-reg: '' }
-  - { reg: '$xmm1', virtual-reg: '' }
-  - { reg: '$xmm2', virtual-reg: '' }
-frameInfo:
-  isFrameAddressTaken: false
-  isReturnAddressTaken: false
-  hasStackMap:     false
-  hasPatchPoint:   false
-  stackSize:       0
-  offsetAdjustment: 0
-  maxAlignment:    1
-  adjustsStack:    false
-  hasCalls:        false
-  stackProtector:  ''
-  functionContext: ''
-  maxCallFrameSize: 0
-  cvBytesOfCalleeSavedRegisters: 0
-  hasOpaqueSPAdjustment: false
-  hasVAStart:      false
-  hasMustTailInVarArgFunc: false
-  hasTailCall:     false
-  localFrameSize:  0
-  savePoint:       ''
-  restorePoint:    ''
-fixedStack:      []
+fixedStack:
+  - { id: 0, type: default, offset: 0, size: 16, alignment: 4, stack-id: default,
+      isImmutable: true, isAliased: false, callee-saved-register: '', callee-saved-restored: true,
+      debug-info-variable: '', debug-info-expression: '', debug-info-location: '' }
 stack:           []
 entry_values:    []
 callSites:       []
@@ -369,17 +201,100 @@ body:             |
   bb.0.entry:
     liveins: $xmm0, $xmm1, $xmm2
 
-    renamable $xmm1 = nofpexcept MULPDrr killed renamable $xmm1, renamable $xmm0, implicit $mxcsr
-    renamable $xmm2 = nofpexcept ADDPDrr killed renamable $xmm2, killed renamable $xmm0, implicit $mxcsr
-    renamable $xmm1 = nofpexcept SUBPDrr killed renamable $xmm1, killed renamable $xmm2, implicit $mxcsr
-    $xmm0 = MOVAPDrr killed $xmm1
-    RET64 $xmm0
+    %2:vr128 = COPY $xmm2
+    %1:vr128 = COPY $xmm1
+    %0:vr128 = COPY $xmm0
+    ; CHECK: %7:vr128 = VFMADD213PDr %0, %1, %2, implicit $mxcsr
+    ; CHECK-NEXT: %4:vr128 = nofpexcept ADDPDrr %0, %1, implicit $mxcsr
+    %3:vr128 = nofpexcept MULPDrr %0, %1, implicit $mxcsr
+    %4:vr128 = nofpexcept ADDPDrr %0, %1, implicit $mxcsr
+    ; CHECK: %6:vr128 = VFMADD213PDr %1, %1, %4, implicit $mxcsr
+    ; CHECK-NEXT: %8:vr128 = nofpexcept MULPDrr %7, killed %6, implicit $mxcsr
+    %5:vr128 = nofpexcept MULPDrr %1, %1, implicit $mxcsr
+    %6:vr128 = nofpexcept ADDPDrr %5, killed %4, implicit $mxcsr
+    %7:vr128 = nofpexcept ADDPDrr %3, %2, implicit $mxcsr
+    %8:vr128 = nofpexcept MULPDrr %7, killed %6, implicit $mxcsr
+    $xmm0 = COPY %8
+    RET 0, $xmm0
+...
+---
+name:            _Z6test_3Dv2_dS_S_S_
+alignment:       16
+exposesReturnsTwice: false
+legalized:       false
+regBankSelected: false
+selected:        false
+failedISel:      false
+tracksRegLiveness: true
+hasWinCFI:       false
+callsEHReturn:   false
+callsUnwindInit: false
+hasEHCatchret:   false
+hasEHScopes:     false
+hasEHFunclets:   false
+isOutlined:      false
+debugInstrRef:   true
+failsVerification: false
+tracksDebugUserValues: false
+registers:
+  - { id: 0, class: gr64, preferred-register: '' }
+  - { id: 1, class: gr64, preferred-register: '' }
+  - { id: 2, class: gr64, preferred-register: '' }
+  - { id: 3, class: gr64, preferred-register: '' }
+  - { id: 4, class: vr128, preferred-register: '' }
+  - { id: 5, class: vr128, preferred-register: '' }
+  - { id: 6, class: vr128, preferred-register: '' }
+  - { id: 7, class: vr128, preferred-register: '' }
+  - { id: 8, class: vr128, preferred-register: '' }
+liveins:
+  - { reg: '$rcx', virtual-reg: '%0' }
+  - { reg: '$rdx', virtual-reg: '%1' }
+  - { reg: '$r8', virtual-reg: '%2' }
+  - { reg: '$r9', virtual-reg: '%3' }
+frameInfo:
+  isFrameAddressTaken: false
+  isReturnAddressTaken: false
+  hasStackMap:     false
+  hasPatchPoint:   false
+  stackSize:       0
+  offsetAdjustment: 0
+  maxAlignment:    8
+  adjustsStack:    false
+  hasCalls:        false
+  stackProtector:  ''
+  functionContext: ''
+  maxCallFrameSize: 4294967295
+  cvBytesOfCalleeSavedRegisters: 0
+  hasOpaqueSPAdjustment: false
+  hasVAStart:      false
+  hasMustTailInVarArgFunc: false
+  hasTailCall:     false
+  localFrameSize:  0
+  savePoint:       ''
+  restorePoint:    ''
+fixedStack:      []
+stack:           []
+entry_values:    []
+callSites:       []
+debugValueSubstitutions: []
+constants:       []
+machineFunctionInfo: {}
+body:             |
+  bb.0.entry:
+    liveins: $rcx, $rdx, $r8, $r9
 
-    ; CHECK: liveins: $xmm0, $xmm1, $xmm2
-
-    ; CHECK-NOT: VFMADD213PDr
-    ; CHECK: renamable $xmm1 = nofpexcept MULPDrr killed renamable $xmm1, renamable $xmm0, implicit $mxcsr
-    ; CHECK-NEXT: renamable $xmm2 = nofpexcept ADDPDrr killed renamable $xmm2, killed renamable $xmm0, implicit $mxcsr
-    ; CHECK-NEXT: renamable $xmm1 = nofpexcept SUBPDrr killed renamable $xmm1, killed renamable $xmm2, implicit $mxcsr
-    ; CHECK-NEXT: $xmm0 = MOVAPDrr killed $xmm1
-    ; CHECK-NEXT: RET64 $xmm0
+    %3:gr64 = COPY $r9
+    %2:gr64 = COPY $r8
+    %1:gr64 = COPY $rdx
+    %0:gr64 = COPY $rcx
+    %4:vr128 = MOVAPDrm %0, 1, $noreg, 0, $noreg :: (load (s128))
+    ; CHECK: %6:vr128 = VFMADD213PDr %4, %1, %2, implicit $mxcsr
+    ; CHECK-NEXT: %7:vr128 = VFMADD213PDr %4, %1, %3, implicit $mxcsr
+    ; CHECK-NEXT: %8:vr128 = nofpexcept DIVPDrr %6, killed %7, implicit $mxcsr
+    %5:vr128 = nofpexcept MULPDrm %4, %1, 1, $noreg, 0, $noreg, implicit $mxcsr :: (load (s128))
+    %6:vr128 = nofpexcept ADDPDrm %5, %2, 1, $noreg, 0, $noreg, implicit $mxcsr :: (load (s128))
+    %7:vr128 = nofpexcept ADDPDrm %5, %3, 1, $noreg, 0, $noreg, implicit $mxcsr :: (load (s128))
+    %8:vr128 = nofpexcept DIVPDrr %6, killed %7, implicit $mxcsr
+    $xmm0 = COPY %8
+    RET 0, $xmm0
+...
