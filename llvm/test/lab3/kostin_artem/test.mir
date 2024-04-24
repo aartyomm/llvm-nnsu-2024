@@ -1,4 +1,4 @@
-# RUN: llc -mtriple x86_64-unknown-linux-gnu -run-pass=x86-volodin-replace-mul-add  %s -o - | FileCheck %s
+# RUN: llc -mtriple x86_64-unknown-linux-gnu -run-pass=x86-kostin-pass  %s -o - | FileCheck %s
 
 # main.cpp
 #
