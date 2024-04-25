@@ -8,4 +8,6 @@ if (NOT WIN32 AND NOT CYGWIN)
       add_subdirectory(${child})
     ENDIF()
   ENDFOREACH()
+
+  set(LLVM_TEST_DEPENDS ${LLVM_TEST_DEPENDS} PARENT_SCOPE)
 endif()
