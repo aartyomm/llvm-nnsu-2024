@@ -1,9 +1,7 @@
-set(Title "Instrument_Functions")
-set(Student "Kuznetsov_Artyom")
-set(Group "FIIT3")
+set(Title "InstrumentFunc")
+set(Student "Kostanyan_Arsen")
+set(Group "FIIT2")
 set(PluginName "${Title}_${Student}_${Group}")
-
-# Result plugin name: Instrument_Functions_Kuznetsov_Artyom_FIIT3
 
 if (NOT WIN32 AND NOT CYGWIN)
     message("-- ${PluginName} -- BUILD")
