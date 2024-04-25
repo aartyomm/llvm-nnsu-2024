@@ -23,6 +23,8 @@ private:
 
   void identifyReplaceableInstructions(MachineFunction &MF);
   void replaceInstructions(MachineFunction &MF);
+
+  bool canCombine(MachineInstr &MI1, MachineInstr &MI2);
 };
 
 char X86KostinPass::ID = 0;
@@ -38,34 +40,50 @@ bool X86KostinPass::runOnMachineFunction(MachineFunction &MF) {
 
 void X86KostinPass::identifyReplaceableInstructions(MachineFunction &MF) {
   for (auto &MBB : MF) {
-    MachineInstr *Mul = nullptr;
-    for (auto &MI : MBB) {
-      if (MI.getOpcode() == X86::MULPDrr) {
-        Mul = &MI;
-      } else if (MI.getOpcode() == X86::ADDPDrr && Mul) {
-        if (Mul->getOperand(0).getReg() == MI.getOperand(1).getReg()) {
-          ToReplace.emplace_back(Mul, &MI);
-          Mul = nullptr;
-        }
-      } else if (MI.definesRegister(Mul ? Mul->getOperand(0).getReg() : Register())) {
-        Mul = nullptr;
+    for (auto MI = MBB.begin(), E = MBB.end(); MI != E; ++MI) {
+      auto &CurrentMI = *MI;
+      auto NextMI = std::next(MI, 1);
+      if (NextMI != E && canCombine(CurrentMI, *NextMI)) {
+        ToReplace.emplace_back(&CurrentMI, &*NextMI);
       }
     }
   }
 }
 
+bool X86KostinPass::canCombine(MachineInstr &MI1, MachineInstr &MI2) {
+  if ((MI1.getOpcode() == X86::MULPDrr && MI2.getOpcode() == X86::ADDPDrr) ||
+      (MI1.getOpcode() == X86::ADDPDrr && MI2.getOpcode() == X86::MULPDrr)) {
+    for (const MachineOperand &MO : MI2.operands()) {
+      if (MO.isReg() && MO.isUse() &&
+          MO.getReg() == MI1.getOperand(0).getReg()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void X86KostinPass::replaceInstructions(MachineFunction &MF) {
   for (auto &Pair : ToReplace) {
-    MachineInstr *Mul = Pair.first;
-    MachineInstr *Add = Pair.second;
-    BuildMI(*Mul->getParent(), *Mul, Mul->getDebugLoc(),
-            TII->get(X86::VFMADD213PDZ128r))
-        .addReg(Add->getOperand(0).getReg(), RegState::Define)
-        .addReg(Mul->getOperand(1).getReg())
-        .addReg(Mul->getOperand(2).getReg())
-        .addReg(Add->getOperand(2).getReg());
-    Mul->eraseFromParent();
-    Add->eraseFromParent();
+    MachineInstr *MI1 = Pair.first;
+    MachineInstr *MI2 = Pair.second;
+
+    unsigned Opcode = X86::VFMADD213PDZ128r;
+    unsigned Op1 = MI1->getOperand(1).getReg();
+    unsigned Op2 = MI1->getOperand(2).getReg();
+    unsigned Op3 = MI2->getOperand(2).getReg();
+    if (MI1->getOpcode() == X86::ADDPDrr) {
+      std::swap(Op1, Op3);
+    }
+
+    BuildMI(*MI1->getParent(), *MI1, MI1->getDebugLoc(), TII->get(Opcode))
+        .addReg(MI2->getOperand(0).getReg(), RegState::Define)
+        .addReg(Op1)
+        .addReg(Op2)
+        .addReg(Op3);
+
+    MI1->eraseFromParent();
+    MI2->eraseFromParent();
   }
 }
 
