@@ -21,11 +21,13 @@ char X86KostinPass::ID = 0;
 bool X86KostinPass::runOnMachineFunction(MachineFunction &pFunction) {
   const TargetInstrInfo *instrInfo = pFunction.getSubtarget().getInstrInfo();
   bool isModified = false;
+  bool isOp = false;
   std::vector<std::pair<MachineInstr *, MachineInstr *>> toDelete;
 
   for (auto &basicBlock : pFunction) {
     MachineInstr *mulInstruction = nullptr;
     MachineInstr *addInstruction = nullptr;
+    isOp = false;
 
     for (auto &instr : basicBlock) {
       if (instr.getOpcode() == X86::MULPDrr) {
@@ -41,6 +43,10 @@ bool X86KostinPass::runOnMachineFunction(MachineFunction &pFunction) {
                     addInstruction->getOperand(1).getReg()) {
               toDelete.emplace_back(mulInstruction, addInstruction);
               isModified = true;
+              if (mulInstruction->getOperand(0).getReg() ==
+                  addInstruction->getOperand(0).getReg()) {
+                    isOp = true;
+                  }
               break;
             }
           } else if (next->definesRegister(
@@ -56,10 +62,18 @@ bool X86KostinPass::runOnMachineFunction(MachineFunction &pFunction) {
     MachineInstrBuilder builder =
         BuildMI(*mulInstr->getParent(), *mulInstr, mulInstr->getDebugLoc(),
                 instrInfo->get(X86::VFMADD213PDZ128r));
-    builder.addReg(addInstr->getOperand(0).getReg(), RegState::Define);
-    builder.addReg(mulInstr->getOperand(1).getReg());
-    builder.addReg(mulInstr->getOperand(2).getReg());
-    builder.addReg(addInstr->getOperand(2).getReg());
+    if (isOp) {
+      builder.addReg(mulInstr->getOperand(0).getReg(), RegState::Define);
+      builder.addReg(mulInstr->getOperand(1).getReg());
+      builder.addReg(mulInstr->getOperand(2).getReg());
+      builder.addReg(addInstr->getOperand(1).getReg());
+    }
+    else {
+      builder.addReg(addInstr->getOperand(0).getReg(), RegState::Define);
+      builder.addReg(mulInstr->getOperand(1).getReg());
+      builder.addReg(mulInstr->getOperand(2).getReg());
+      builder.addReg(addInstr->getOperand(2).getReg());
+    }
     mulInstr->eraseFromParent();
     addInstr->eraseFromParent();
   }
