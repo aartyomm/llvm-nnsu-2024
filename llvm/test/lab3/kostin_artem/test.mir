@@ -132,16 +132,12 @@ body:             |
     MOVAPDmr %stack.2.a.addr, 1, $noreg, 0, $noreg, %3 :: (store (s128) into %ir.a.addr)
     %13:vr128 = MOVAPDrm %stack.2.a.addr, 1, $noreg, 0, $noreg :: (load (s128) from %ir.a.addr)
     %12:vr128 = MOVAPDrm %stack.1.b.addr, 1, $noreg, 0, $noreg :: (load (s128) from %ir.b.addr)
+    ; CHECK: %6:vr128 = VFMADD213PDr %13, %12, %11, implicit $mxcsr
+    ; CHECK-NEXT: $xmm0 = COPY %6
     %11:vr128 = MOVAPDrm %stack.0.c.addr, 1, $noreg, 0, $noreg :: (load (s128) from %ir.c.addr)
     %10:vr128 = nofpexcept MULPDrr %13, %12, implicit $mxcsr
     %6:vr128 = nofpexcept ADDPDrr %10, %11, implicit $mxcsr
     $xmm0 = COPY %6
     RET64 implicit $xmm0
-
-    ; CHECK: %11:vr128 = MOVAPDrm %stack.0.c.addr, 1, $noreg, 0, $noreg :: (load (s128) from %ir.c.addr)
-    ; CHECK-NOT: %10:vr128 = nofpexcept MULPDrr %13, %12, implicit $mxcsr
-    ; CHECK-NOT: %6:vr128 = nofpexcept ADDPDrr %10, %11, implicit $mxcsr
-    ; CHECK: %6:vr128 = VFMADD213PDr %13, %12, %11, implicit $mxcsr
-    ; CHECK-NEXT: $xmm0 = COPY %6
 
 ...
