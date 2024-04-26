@@ -47,6 +47,9 @@ bool X86KostinPass::runOnMachineFunction(MachineFunction &pFunction) {
                   addInstruction->getOperand(0).getReg()) {
                     isOp = true;
                   }
+                  else {
+                        isOp = false; 
+                    }
               break;
             }
           } else if (next->definesRegister(
