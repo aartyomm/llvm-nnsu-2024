@@ -11,7 +11,8 @@
 # }
 
 # __m128d muladd_test3(__m128d a, __m128d b, __m128d c) {
-#   __m128d tmp = a * c + b;
+#   __m128d tmp = a * c;
+#   tmp = tmp + b;
 #   return tmp * c + b;
 # }
 
@@ -299,24 +300,24 @@ body:             |
   bb.0.entry:
     liveins: $xmm0, $xmm1, $xmm2
 
-    renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, renamable $xmm2, implicit $mxcsr
-    renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm0, renamable $xmm1, implicit $mxcsr
     renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, killed renamable $xmm2, implicit $mxcsr
-    renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm0, killed renamable $xmm1, implicit $mxcsr
+    renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm1, killed renamable $xmm0, implicit $mxcsr
+    renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, killed renamable $xmm2, implicit $mxcsr
+    renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm1, killed renamable $xmm0, implicit $mxcsr
     RET64 $xmm0
     ; CHECK: liveins: $xmm0, $xmm1, $xmm2
 
-    ; CHECK-NOT: renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, renamable $xmm2, implicit $mxcsr
-    ; CHECK-NOT: renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm0, renamable $xmm1, implicit $mxcsr
-    ; CHECK: $xmm0 = VFMADD213PDZ128r $xmm0, $xmm2, $xmm1, implicit $mxcsr
-    ; CHECK-NOT: renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, renamable $xmm2, implicit $mxcsr
-    ; CHECK-NOT: renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm0, renamable $xmm1, implicit $mxcsr
+    ; CHECK-NOT: renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, killed renamable $xmm2, implicit $mxcsr
+    ; CHECK-NOT: renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm1, killed renamable $xmm0, implicit $mxcsr
+    ; CHECK: $xmm0 = VFMADD213PDZ128r $xmm0, $xmm1, $xmm2, implicit $mxcsr
+    ; CHECK-NOT: renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, killed renamable $xmm2, implicit $mxcsr
+    ; CHECK-NOT: renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm1, killed renamable $xmm0, implicit $mxcsr
 
     ; CHECK-NOT: renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, killed renamable $xmm2, implicit $mxcsr
-    ; CHECK-NOT: renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm0, killed renamable $xmm1, implicit $mxcsr
-    ; CHECK-NEXT: $xmm0 = VFMADD213PDZ128r $xmm0, $xmm2, $xmm1, implicit $mxcsr
-    ; CHECK-NOT: renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, renamable $xmm2, implicit $mxcsr
-    ; CHECK-NOT: renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm0, renamable $xmm1, implicit $mxcsr
+    ; CHECK-NOT: renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm1, killed renamable $xmm0, implicit $mxcsr
+    ; CHECK-NEXT: $xmm0 = VFMADD213PDZ128r $xmm0, $xmm1, $xmm2, implicit $mxcsr
+    ; CHECK-NOT: renamable $xmm0 = nofpexcept MULPDrr killed renamable $xmm0, killed renamable $xmm2, implicit $mxcsr
+    ; CHECK-NOT: renamable $xmm0 = nofpexcept ADDPDrr killed renamable $xmm1, killed renamable $xmm0, implicit $mxcsr
 
     ; CHECK-NEXT: RET64 $xmm0
 ...
