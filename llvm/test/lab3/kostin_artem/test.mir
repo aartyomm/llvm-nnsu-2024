@@ -683,8 +683,8 @@ body:             |
     RET 0, $xmm0
 
     ; CHECK: %1:vr128 = COPY $xmm1
-    ; CHECK-NEXT: %4:vr128 = nofpexcept DIVPDrr %2, %1, implicit $mxcsr
     ; CHECK-NEXT: %5:vr128 = VFMADD213PDZ128r %1, %2, %4, implicit $mxcsr
+    ; CHECK-NEXT: %4:vr128 = nofpexcept DIVPDrr %2, %1, implicit $mxcsr
     ; CHECK-NEXT: %6:vr128 = nofpexcept ADDPDrm %5, $rip, 1, $noreg, %const.0, $noreg, implicit $mxcsr :: (load (s128) from constant-pool)
     ; CHECK-NEXT: $xmm0 = COPY %6
 

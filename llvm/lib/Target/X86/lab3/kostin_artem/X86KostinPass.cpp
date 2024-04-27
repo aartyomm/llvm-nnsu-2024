@@ -64,9 +64,9 @@ bool X86KostinPass::runOnMachineFunction(MachineFunction &pFunction) {
     MachineInstrBuilder builder =
         BuildMI(*mulInstr->getParent(), *mulInstr, mulInstr->getDebugLoc(),
                 instrInfo->get(X86::VFMADD213PDZ128r));
-      builder.addReg(addInstr->getOperand(0).getReg(), RegState::Define);
-      builder.addReg(mulInstr->getOperand(1).getReg());
-      builder.addReg(mulInstr->getOperand(2).getReg());
+    builder.addReg(addInstr->getOperand(0).getReg(), RegState::Define);
+    builder.addReg(mulInstr->getOperand(1).getReg());
+    builder.addReg(mulInstr->getOperand(2).getReg());
     if (isOp) {
       builder.addReg(addInstr->getOperand(1).getReg());
     } else {
