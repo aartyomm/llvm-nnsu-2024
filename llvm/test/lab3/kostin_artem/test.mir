@@ -131,7 +131,7 @@ body:             |
     $xmm0 = COPY %4
     RET 0, $xmm0
 
-    ; CHECK: %4:vr128 = VFMADD213PDr %0, %1, %2, implicit $mxcsr
+    ; CHECK: %4:vr128 = VFMADD213PDZ128r %0, %1, %2, implicit $mxcsr
     ; CHECK-NEXT: $xmm0 = COPY %4
 
 ...
