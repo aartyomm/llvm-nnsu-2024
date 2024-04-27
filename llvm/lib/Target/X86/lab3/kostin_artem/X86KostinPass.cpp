@@ -36,9 +36,7 @@ bool X86KostinPass::runOnMachineFunction(MachineFunction &pFunction) {
           if (next->getOpcode() == X86::ADDPDrr) {
             addInstruction = &*next;
             if (mulInstruction->getOperand(0).getReg() ==
-                    addInstruction->getOperand(0).getReg() ||
-                mulInstruction->getOperand(0).getReg() ==
-                    addInstruction->getOperand(1).getReg()) {
+                addInstruction->getOperand(1).getReg()) {
               toDelete.emplace_back(mulInstruction, addInstruction);
               isModified = true;
               break;
