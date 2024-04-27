@@ -45,11 +45,10 @@ bool X86KostinPass::runOnMachineFunction(MachineFunction &pFunction) {
               isModified = true;
               if (mulInstruction->getOperand(0).getReg() ==
                   addInstruction->getOperand(0).getReg()) {
-                    isOp = true;
-                  }
-                  else {
-                        isOp = false; 
-                    }
+                isOp = true;
+              } else {
+                isOp = false;
+              }
               break;
             }
           } else if (next->definesRegister(
@@ -70,8 +69,7 @@ bool X86KostinPass::runOnMachineFunction(MachineFunction &pFunction) {
       builder.addReg(mulInstr->getOperand(1).getReg());
       builder.addReg(mulInstr->getOperand(2).getReg());
       builder.addReg(addInstr->getOperand(1).getReg());
-    }
-    else {
+    } else {
       builder.addReg(addInstr->getOperand(0).getReg(), RegState::Define);
       builder.addReg(mulInstr->getOperand(1).getReg());
       builder.addReg(mulInstr->getOperand(2).getReg());
@@ -87,4 +85,3 @@ bool X86KostinPass::runOnMachineFunction(MachineFunction &pFunction) {
 
 static RegisterPass<X86KostinPass> X("x86-kostin-pass", "X86 Kostin Pass",
                                      false, false);
-                                     
